@@ -31,7 +31,8 @@ namespace GoSharpCore {
 
         private readonly HashSet<string> _moveProperties = new HashSet<string>
         {
-            "W","B","AB","AW","AE"
+            "W","B","AB","AW","AE", "C",
+            "LB", "TR", "MA", "CR", "SQ"
         };
         /// <summary>
         /// Returns true if this property is a file format property.

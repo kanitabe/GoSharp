@@ -30,7 +30,8 @@ namespace GoSharpCore {
         private static readonly Dictionary<string, Func<Game, SGFProperty, Game>> PropertyHandlers =
             new Dictionary<string, Func<Game, SGFProperty, Game>>();
 
-        private static readonly HashSet<string> PropertiesToExclude = new HashSet<string> { "W", "B", "AE", "AB", "AW" };
+        private static readonly HashSet<string> PropertiesToExclude = new HashSet<string> { "W", "B", "AE", "AB", "AW", "C",
+                                                                                            "LB", "TR", "MA", "CR", "SQ" };
 
         static Game() {
             foreach (var kvp in SGFPropToColor) {
@@ -51,6 +52,12 @@ namespace GoSharpCore {
             PropertyHandlers["WR"] = ((x, y) => x.HandleWR(y));
             PropertyHandlers["BR"] = ((x, y) => x.HandleBR(y));
             PropertyHandlers["TM"] = ((x, y) => x.HandleTM(y));
+            PropertyHandlers["C"] = ((x, y) => x.HandleC(y));
+            PropertyHandlers["LB"] = ((x, y) => x.HandleLB(y));
+            PropertyHandlers["TR"] = ((x, y) => x.HandleMarks(y, "△"));
+            PropertyHandlers["MA"] = ((x, y) => x.HandleMarks(y, "✕"));
+            PropertyHandlers["CR"] = ((x, y) => x.HandleMarks(y, "◯"));
+            PropertyHandlers["SQ"] = ((x, y) => x.HandleMarks(y, "□"));
         }
 
         /// <summary>
@@ -59,6 +66,11 @@ namespace GoSharpCore {
         public static readonly Point PassMove = new Point(-1, -1);
 
         private readonly List<Variation> _moves = new List<Variation>();
+
+        public void PopMoves()
+        {
+            _moves.Clear();
+        }
 
         private readonly Dictionary<Content, int> _captures = new Dictionary<Content, int>()
         {
@@ -73,12 +85,12 @@ namespace GoSharpCore {
         /// <summary>
         /// Gets the board object of the current game position.
         /// </summary>
-        public Board Board { get; private set; }
+        public Board Board { get; set; }
 
         /// <summary>
         /// Gets the color of the player whose turn it is to play.
         /// </summary>
-        public Content Turn { get; private set; }
+        public Content Turn { get; set; }
 
         /// <summary>
         /// Gets the GameInfo object of this game. This is null except for root
@@ -158,6 +170,9 @@ namespace GoSharpCore {
         /// </summary>
         [PublicAPI]
         public int BlackCaptures => _captures[Content.Black];
+
+        public string Comment => _comment;
+        private string _comment;
 
         /// <summary>
         /// Constructs a root game object based on a GameInfo object.
@@ -321,7 +336,7 @@ namespace GoSharpCore {
             var g = new Game(this);
             legal = g.InternalMakeMove(x, y);
             if (!dontAddVariationIfIllegal || legal) {
-                _moves.Add(new Variation(new Point(x, y), g));
+            _moves.Add(new Variation(new Point(x, y), g));
             }
             return g;
         }
@@ -569,6 +584,15 @@ namespace GoSharpCore {
             coll.Read(sr);
             return coll.GameTrees.Select(c => new Game(c)).ToList();
         }
+        
+        public static List<Game> SerializeFromSGFText(string text) {
+            using(TextReader sr = new StringReader(text))
+            {
+                var coll = new SGFCollection();
+                coll.Read(sr);
+                return coll.GameTrees.Select(c => new Game(c)).ToList();
+            }
+        }
 
         private static void CreateGameTree(SGFGameTree root, Game p) {
             if (p.GameInfo != null) {
@@ -688,6 +712,34 @@ namespace GoSharpCore {
                 throw new Exception("Invalid game.");
             }
             GameInfo.MainTime = TimeSpan.FromSeconds(p.Values[0].Num);
+            return this;
+        }
+        
+        private Game HandleC(SGFProperty p)
+        {
+            _comment = p.Values[0].Value;
+            return this;
+        }
+        
+        public List<(Point, string)> Labels => _labels;
+        private List<(Point, string)> _labels = new List<(Point, string)>();
+        
+        private Game HandleLB(SGFProperty p)
+        {
+            foreach (var v in p.Values) {
+                // Value is the content of [].
+                // MoveA is to the left of ":", MoveB is to the right of ":"
+                int colonPos = v.Value.IndexOf(":");
+                _labels.Add((v.MoveA, v.Value.Substring(colonPos + 1))); // Get the characters after ":"
+            }
+            return this;
+        }
+        
+        private Game HandleMarks(SGFProperty p, string mark)
+        {
+            foreach (var v in p.Values) {
+                _labels.Add( (v.Move, mark) );
+            }
             return this;
         }
     }
