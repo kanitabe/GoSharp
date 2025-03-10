@@ -85,12 +85,12 @@ namespace GoSharpCore {
         /// <summary>
         /// Gets the board object of the current game position.
         /// </summary>
-        public Board Board { get; set; }
+        public Board Board { get; private set; }
 
         /// <summary>
         /// Gets the color of the player whose turn it is to play.
         /// </summary>
-        public Content Turn { get; set; }
+        public Content Turn { get; private set; }
 
         /// <summary>
         /// Gets the GameInfo object of this game. This is null except for root
@@ -336,7 +336,7 @@ namespace GoSharpCore {
             var g = new Game(this);
             legal = g.InternalMakeMove(x, y);
             if (!dontAddVariationIfIllegal || legal) {
-            _moves.Add(new Variation(new Point(x, y), g));
+                _moves.Add(new Variation(new Point(x, y), g));
             }
             return g;
         }
